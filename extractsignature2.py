@@ -12,7 +12,7 @@ from ultralytics import YOLO
 from huggingface_hub import login
 
 # Replace 'your_token_here' with your actual Hugging Face token
-login(token="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")
+login(token="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")
 
 model_path = hf_hub_download(
   repo_id="tech4humans/yolov8s-signature-detector", 
@@ -21,7 +21,10 @@ model_path = hf_hub_download(
 
 model = YOLO(model_path)
 
-image_path = "C:\\Users\\tshiv\\Downloads\\third.jpg"
+image_path = "C:\\Users\\tshiv\\Downloads\\SpecimenSignatureSheet.png"
+
+
+#image_path = "C:\\Users\\tshiv\\Downloads\\third.jpg"
 image = cv2.imread(image_path)
 
 results = model(image_path)
@@ -47,12 +50,13 @@ for i, box in enumerate(detections.xyxy):
     #cv2.imwrite(crop_filename, signature_crop)
 
     # Step 3: Bold/enhance the signature
-    kernel = np.ones((3,3),np.uint8)
+    kernel = np.ones((1,1),np.uint8)
     bold_signature = cv2.dilate(signature_crop, kernel, iterations=1)
+    gray_image = cv2.cvtColor(bold_signature, cv2.COLOR_BGR2GRAY)
 
     # Step 4: Resize to fixed size
     desired_size = (400, 200)
-    fixed_size = cv2.resize(bold_signature, desired_size, interpolation=cv2.INTER_NEAREST_EXACT)
+    fixed_size = cv2.resize(gray_image, desired_size, interpolation=cv2.INTER_NEAREST_EXACT)
     output_path = os.path.join(output_dir, f"extracted_signature_{i+1}.png")
     cv2.imwrite(output_path, fixed_size)
 
