@@ -12,7 +12,7 @@ from huggingface_hub import hf_hub_download, login
 from ultralytics import YOLO
 
 # Authenticate with Hugging Face using your token
-login(token="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")
+login(token="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")
 
 # Download the YOLO signature detection model from Hugging Face
 model_path = hf_hub_download(
@@ -22,7 +22,7 @@ model_path = hf_hub_download(
 model = YOLO(model_path)
 
 # Path to the input document image (PNG or JPG)
-image_path = "C:\Users\tshiv\Downloads\SpecimenSignatureSheet.png"
+image_path = "C:\\Users\\tshiv\\Downloads\\SpecimenSignatureSheet.png"
 # Alternative image path (uncomment to use)
 # image_path = "C:\Users\tshiv\Downloads\third.jpg"
 
@@ -45,7 +45,7 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 # Prepare output directory for saving extracted signatures
-output_dir = "C:\Users\tshiv\Downloads\op"
+output_dir = "C:\\Users\\tshiv\\Downloads\\op"
 os.makedirs(output_dir, exist_ok=True)
 
 # Loop through each detected signature bounding box
@@ -57,16 +57,31 @@ for i, box in enumerate(detections.xyxy):
   # crop_filename = os.path.join(output_dir, f"signature_{i+1}.png")
   # cv2.imwrite(crop_filename, signature_crop)
 
+
   # Step 3: Bold/enhance the signature using dilation
   kernel = np.ones((1,1), np.uint8)
   bold_signature = cv2.dilate(signature_crop, kernel, iterations=1)
 
-  # Convert the signature to grayscale
-  gray_image = cv2.cvtColor(bold_signature, cv2.COLOR_BGR2GRAY)
+# Sharpen the image
+  sharpen_kernel = np.array([[0, -1, 0],[-1, 5, -1],[0, -1, 0]])
+  sharpened = cv2.filter2D(bold_signature, -1, sharpen_kernel)
+# Convert the signature to grayscale
+  gray_image = cv2.cvtColor(sharpened, cv2.COLOR_BGR2GRAY)
+
+
+  # Remove borders from the cropped image using contour detection
+  # Threshold to get binary image
+  _, thresh = cv2.threshold(gray_image, 240, 255, cv2.THRESH_BINARY_INV)
+  contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+  if contours:
+    x, y, w, h = cv2.boundingRect(contours[0])
+    borderless_crop = gray_image[y:y+h, x:x+w]
+  else:
+    borderless_crop = gray_image
 
   # Step 4: Resize the signature to a fixed size for consistency
   desired_size = (400, 200)
-  fixed_size = cv2.resize(gray_image, desired_size, interpolation=cv2.INTER_NEAREST_EXACT)
+  fixed_size = cv2.resize(borderless_crop, desired_size, interpolation=cv2.INTER_NEAREST_EXACT)
   output_path = os.path.join(output_dir, f"extracted_signature_{i+1}.png")
   cv2.imwrite(output_path, fixed_size)
 
