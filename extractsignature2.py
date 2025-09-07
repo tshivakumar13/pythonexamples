@@ -1,66 +1,77 @@
-import cv2
-import os
-import supervision as sv
-import fitz  # PyMuPDF
-import cv2
-import numpy as np
-from PIL import Image
 
-from huggingface_hub import hf_hub_download
+# Import required libraries
+import cv2  # OpenCV for image processing
+import os   # For file and directory operations
+import supervision as sv  # For annotation and detection utilities
+import fitz  # PyMuPDF (not used in this script, but often for PDF handling)
+import numpy as np  # For array and matrix operations
+from PIL import Image  # For image format conversion
+
+# Import Hugging Face and YOLO model utilities
+from huggingface_hub import hf_hub_download, login
 from ultralytics import YOLO
 
-from huggingface_hub import login
+# Authenticate with Hugging Face using your token
+login(token="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")
 
-# Replace 'your_token_here' with your actual Hugging Face token
-login(token="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")
-
+# Download the YOLO signature detection model from Hugging Face
 model_path = hf_hub_download(
-  repo_id="tech4humans/yolov8s-signature-detector", 
+  repo_id="tech4humans/yolov8s-signature-detector",
   filename="yolov8s.pt"
 )
-
 model = YOLO(model_path)
 
-image_path = "C:\\Users\\tshiv\\Downloads\\SpecimenSignatureSheet.png"
+# Path to the input document image (PNG or JPG)
+image_path = "C:\Users\tshiv\Downloads\SpecimenSignatureSheet.png"
+# Alternative image path (uncomment to use)
+# image_path = "C:\Users\tshiv\Downloads\third.jpg"
 
-
-#image_path = "C:\\Users\\tshiv\\Downloads\\third.jpg"
+# Read the image using OpenCV
 image = cv2.imread(image_path)
 
+# Run the YOLO model to detect signatures in the image
 results = model(image_path)
 
+# Convert YOLO results to supervision Detections object
 detections = sv.Detections.from_ultralytics(results[0])
 
+# Annotate the detected signatures on the image
 box_annotator = sv.BoxAnnotator()
 annotated_image = box_annotator.annotate(scene=image, detections=detections)
 
+# Display the annotated image with detected signatures
 cv2.imshow("Detections", annotated_image)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-# Save each detected signature as a separate PNG file
-output_dir = "C:\\Users\\tshiv\\Downloads\\op"
+# Prepare output directory for saving extracted signatures
+output_dir = "C:\Users\tshiv\Downloads\op"
 os.makedirs(output_dir, exist_ok=True)
 
+# Loop through each detected signature bounding box
 for i, box in enumerate(detections.xyxy):
-    x1, y1, x2, y2 = map(int, box)
-    signature_crop = image[y1:y2, x1:x2]
-    #
-    # crop_filename = os.path.join(output_dir, f"signature_{i+1}.png")
-    #cv2.imwrite(crop_filename, signature_crop)
+  x1, y1, x2, y2 = map(int, box)  # Get bounding box coordinates
+  signature_crop = image[y1:y2, x1:x2]  # Crop the signature from the image
 
-    # Step 3: Bold/enhance the signature
-    kernel = np.ones((1,1),np.uint8)
-    bold_signature = cv2.dilate(signature_crop, kernel, iterations=1)
-    gray_image = cv2.cvtColor(bold_signature, cv2.COLOR_BGR2GRAY)
+  # Optional: Save the raw crop (uncomment if needed)
+  # crop_filename = os.path.join(output_dir, f"signature_{i+1}.png")
+  # cv2.imwrite(crop_filename, signature_crop)
 
-    # Step 4: Resize to fixed size
-    desired_size = (400, 200)
-    fixed_size = cv2.resize(gray_image, desired_size, interpolation=cv2.INTER_NEAREST_EXACT)
-    output_path = os.path.join(output_dir, f"extracted_signature_{i+1}.png")
-    cv2.imwrite(output_path, fixed_size)
+  # Step 3: Bold/enhance the signature using dilation
+  kernel = np.ones((1,1), np.uint8)
+  bold_signature = cv2.dilate(signature_crop, kernel, iterations=1)
 
-    print(f"Saved signature crop: {output_path}")
+  # Convert the signature to grayscale
+  gray_image = cv2.cvtColor(bold_signature, cv2.COLOR_BGR2GRAY)
 
+  # Step 4: Resize the signature to a fixed size for consistency
+  desired_size = (400, 200)
+  fixed_size = cv2.resize(gray_image, desired_size, interpolation=cv2.INTER_NEAREST_EXACT)
+  output_path = os.path.join(output_dir, f"extracted_signature_{i+1}.png")
+  cv2.imwrite(output_path, fixed_size)
+
+  print(f"Saved signature crop: {output_path}")
+
+# Final cleanup: Close any OpenCV windows
 cv2.waitKey(0)
 cv2.destroyAllWindows()
